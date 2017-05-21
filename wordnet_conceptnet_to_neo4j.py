@@ -241,9 +241,9 @@ class Exporter:
 
     def extract_lemmas(self, synset):
         for lemma in synset.lemmas():
-            id = ('%s.%s' % (lemma.name(), synset.pos())).lower()
+            id = ('%s.%s' % (lemma.name().lower(), synset.pos())).lower()
             if id not in self.lemma_map:
-                self.lemma_map[id] = WordNode(id, lemma.name(), synset.pos(), is_lemma=True)
+                self.lemma_map[id] = WordNode(id, lemma.name().lower(), synset.pos(), is_lemma=True)
                 for rel in lemma.hyponyms():
                     print(rel)
             self.add_relationship(id, synset.name(), 'InSynset', weight=2, dataset="/d/wordnet/3.1")
