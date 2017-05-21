@@ -1,3 +1,4 @@
 *.csv.gz
+*.csv
 .idea/
-dataset/
+neo4j_csv_imports/

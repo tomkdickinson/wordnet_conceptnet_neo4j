@@ -1,5 +1,6 @@
 from nltk.corpus import wordnet as wn
 import csv
+import json
 import logging as log
 import gzip
 import math
@@ -38,6 +39,14 @@ class WordNode:
 
     def set_is_concept(self):
         self._is_concept = True
+
+
+    @property
+    def get_concept_uri(self):
+        return self._concept_uri
+
+    def set_concept_uri(self, concept_uri):
+        self._concept_uri = concept_uri
 
 
 class SynsetNode:
@@ -116,115 +125,135 @@ class Exporter:
                 if start is not None and end is not None:
                     self.add_concept_node(start)
                     self.add_concept_node(end)
-
-                    self.add_relationship(start.get_id, end.get_id, re.sub('/r/','',line[1]))
+                    dataset, weight = self.extract_edge_details(line[4])
+                    self.add_relationship(start.get_id, end.get_id, re.sub('/r/','',line[1]), dataset, weight)
 
                 i += 1
                 progress_round = 10000
                 progress = math.floor(i / progress_round) * progress_round
                 if progress > last_progress:
                     last_progress = progress
-                    log.info('Extracted %i concepts' % progress)
+                    log.info('Extracted %i concept assertations' % progress)
+
+    def extract_edge_details(self, edge_string):
+        try:
+            dataset = None
+            weight = None
+            edge = json.loads(edge_string)
+            if 'dataset' in edge:
+                dataset = edge['dataset']
+            if 'weight' in edge:
+                try:
+                    weight = float(edge['weight'])
+                except Exception as e:
+                    log.error(e)
+            return dataset, weight
+        except Exception as e:
+            log.error(e)
+            return None, None
 
     def add_concept_node(self, concept):
         if concept is not None:
             if concept.get_id in self.lemma_map:
-                self.lemma_map[concept.get_id].set_is_concept()
+                self.lemma_map[concept.get_id.lower()].set_is_concept()
             else:
-                self.lemma_map[concept.get_id] = concept
+                self.lemma_map[concept.get_id.lower()] = concept
+            self.lemma_map[concept.get_id.lower()].set_concept_uri(concept.get_concept_uri)
 
     def extract_concept(self, concept_uri):
         concept_parts = concept_uri[1:].split('/')
         if self.language_filter is None or concept_parts[1] == self.language_filter:
             if len(concept_parts) > 3:
-                return WordNode(id='%s.%s' % (concept_parts[2], concept_parts[3]), pos=concept_parts[3], name=concept_parts[2], is_concept=True)
+                return WordNode(id='%s.%s' % (concept_parts[2], concept_parts[3]), pos=concept_parts[3], name=concept_parts[2], concept_uri=concept_uri, is_concept=True)
             else:
-                return WordNode(id=concept_parts[2], pos=None, name=concept_parts[2], is_concept=True)
+                return WordNode(id=concept_parts[2], pos=None, name=concept_parts[2], concept_uri=concept_uri, is_concept=True)
         return None
 
     def extract_relationships(self, synset):
         # Hyponyms
         for related_node in synset.hyponyms():
-            self.add_relationship(synset.name(), related_node.name(), 'IsA')
+            self.add_relationship(synset.name(), related_node.name(), 'IsA', weight=2, dataset="/d/wordnet/3.1")
 
         # Hypernyms
         for related_node in synset.hypernyms():
-            self.add_relationship(synset.name(), related_node.name(), 'IsA')
+            self.add_relationship(synset.name(), related_node.name(), 'IsA', weight=2, dataset="/d/wordnet/3.1")
 
         # Holonyms
 
         # Member Holonyms
         for related_node in synset.member_holonyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # substance_holonyms
         for related_node in synset.substance_holonyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # part_holonyms
         for related_node in synset.part_holonyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # Meronyms
 
         # Member meronyms
         for related_node in synset.member_meronyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # substance_meronyms
         for related_node in synset.substance_meronyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # part_meronyms
         for related_node in synset.part_meronyms():
-            self.add_relationship(synset.name(), related_node.name(), 'PartOf')
+            self.add_relationship(synset.name(), related_node.name(), 'PartOf', weight=2, dataset="/d/wordnet/3.1")
 
         # Domains
 
         # topic_domains
         for related_node in synset.topic_domains():
-            self.add_relationship(synset.name(), related_node.name(), 'Domain')
+            self.add_relationship(synset.name(), related_node.name(), 'Domain', weight=2, dataset="/d/wordnet/3.1")
 
         # region_domains
         for related_node in synset.region_domains():
-            self.add_relationship(synset.name(), related_node.name(), 'Domain')
+            self.add_relationship(synset.name(), related_node.name(), 'Domain', weight=2, dataset="/d/wordnet/3.1")
 
         # usage_domains
         for related_node in synset.usage_domains():
-            self.add_relationship(synset.name(), related_node.name(), 'Domain')
+            self.add_relationship(synset.name(), related_node.name(), 'Domain', weight=2, dataset="/d/wordnet/3.1")
 
         # attributes
         for related_node in synset.attributes():
-            self.add_relationship(synset.name(), related_node.name(), 'Attribute')
+            self.add_relationship(synset.name(), related_node.name(), 'Attribute', weight=2, dataset="/d/wordnet/3.1")
         # entailments
         for related_node in synset.entailments():
-            self.add_relationship(synset.name(), related_node.name(), 'Entailment')
+            self.add_relationship(synset.name(), related_node.name(), 'Entailment', weight=2, dataset="/d/wordnet/3.1")
         # causes
         for related_node in synset.causes():
-            self.add_relationship(synset.name(), related_node.name(), 'Cause')
+            self.add_relationship(synset.name(), related_node.name(), 'Cause', weight=2, dataset="/d/wordnet/3.1")
         # also_sees
         for related_node in synset.also_sees():
-            self.add_relationship(synset.name(), related_node.name(), 'AlsoSee')
+            self.add_relationship(synset.name(), related_node.name(), 'AlsoSee', weight=2, dataset="/d/wordnet/3.1")
         # verb_groups
         for related_node in synset.verb_groups():
-            self.add_relationship(synset.name(), related_node.name(), 'VerbGroup')
+            self.add_relationship(synset.name(), related_node.name(), 'VerbGroup', weight=2, dataset="/d/wordnet/3.1")
         # similar_tos
         for related_node in synset.similar_tos():
-            self.add_relationship(synset.name(), related_node.name(), 'SimilarTo')
+            self.add_relationship(synset.name(), related_node.name(), 'SimilarTo', weight=2, dataset="/d/wordnet/3.1")
 
     def extract_lemmas(self, synset):
         for lemma in synset.lemmas():
-            id = '%s.%s' % (lemma.name(), synset.pos())
+            id = ('%s.%s' % (lemma.name(), synset.pos())).lower()
             if id not in self.lemma_map:
                 self.lemma_map[id] = WordNode(id, lemma.name(), synset.pos(), is_lemma=True)
-            self.add_relationship(id, synset.name(), 'IN_SYNSET')
+                for rel in lemma.hyponyms():
+                    print(rel)
+            self.add_relationship(id, synset.name(), 'InSynset', weight=2, dataset="/d/wordnet/3.1")
 
     def index_relationship(self, start, end, type):
         self.relationship_index.setdefault(start, {})
         self.relationship_index[start].setdefault(end, [])
         self.relationship_index[start][end].append(type)
 
-    def add_relationship(self, start, end, type):
+    def add_relationship(self, start, end, type, dataset=None, weight=None):
         """
         Checks and adds only bi-directional relationships
         :param start:
@@ -240,7 +269,7 @@ class Exporter:
         else:
             self.index_relationship(start, end, type)
             self.index_relationship(end, start, type)
-            self.relationships.append([start, end, type])
+            self.relationships.append([start, end, dataset, weight, type])
 
     def write_results(self):
         log.info("Writing synsets")
@@ -253,7 +282,7 @@ class Exporter:
         log.info('Writing Relationships')
         with open('%s/relationships.csv' % self.dataset_folder, 'w') as f:
             writer = csv.writer(f)
-            writer.writerow([':START_ID',':END_ID',':TYPE'])
+            writer.writerow([':START_ID',':END_ID','dataset:string','weight:double',':TYPE'])
             for relationship in self.relationships:
                 writer.writerow(relationship)
 
@@ -264,4 +293,4 @@ class Exporter:
             for id in self.lemma_map:
                 writer.writerow(self.lemma_map[id].get_row())
 
-Exporter('neo4j_csv_imports', 'conceptnet-5.5.0.csv.gz', language_filter='en').export()
+Exporter('neo4j_csv_imports', 'conceptnet-assertions-5.5.0.csv.gz', language_filter="en").export()
