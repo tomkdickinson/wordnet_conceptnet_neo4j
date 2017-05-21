@@ -293,4 +293,4 @@ class Exporter:
             for id in self.lemma_map:
                 writer.writerow(self.lemma_map[id].get_row())
 
-Exporter('neo4j_csv_imports', 'conceptnet-assertions-5.5.0.csv.gz', language_filter="en").export()
+Exporter('neo4j_csv_imports', 'conceptnet-assertions-5.5.0.csv.gz', language_filter='en').export()
