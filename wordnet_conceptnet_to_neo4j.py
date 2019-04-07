@@ -1,4 +1,5 @@
-from nltk.corpus import wordnet as wn
+import nltk
+import nltk.corpus
 import csv
 import json
 import logging as log
@@ -100,7 +101,7 @@ class Exporter:
         :return:
         """
         log.info('Extracting WordNet')
-        all_synsets = list(wn.all_synsets())
+        all_synsets = list(nltk.corpus.wordnet.all_synsets())
         last_progress = 0
         for i, synset in enumerate(all_synsets):
             self.synsets.append(SynsetNode(synset.name(), synset.pos(), synset.definition()))
@@ -131,7 +132,7 @@ class Exporter:
                 progress = math.floor(i / progress_round) * progress_round
                 if progress > last_progress:
                     last_progress = progress
-                    log.info('Extracted %i concept assertations' % progress)
+                    log.info('Extracted %i concept assertions' % progress)
 
     def extract_edge_details(self, edge_string):
         try:
@@ -246,50 +247,54 @@ class Exporter:
                 self.lemma_map[id] = WordNode(id, lemma.name().lower(), synset.pos(), is_lemma=True)
             self.add_relationship(id, synset.name(), 'InSynset', weight=2, dataset="/d/wordnet/3.1")
 
-    def index_relationship(self, start, end, type):
+    def index_relationship(self, start, end, rel_type):
         self.relationship_index.setdefault(start, {})
         self.relationship_index[start].setdefault(end, [])
-        self.relationship_index[start][end].append(type)
+        self.relationship_index[start][end].append(rel_type)
 
-    def add_relationship(self, start, end, type, dataset=None, weight=None):
+    def add_relationship(self, start, end, rel_type, dataset=None, weight=None):
         """
         Checks and adds only bi-directional relationships
         :param start:
         :param end:
-        :param type:
+        :param rel_type:
+        :param dataset:
+        :param weight:
         :return:
         """
-        if (start in self.relationship_index and end in self.relationship_index[start] and type in
+        if (start in self.relationship_index and end in self.relationship_index[start] and rel_type in
             self.relationship_index[start][end]) or \
-                (end in self.relationship_index and start in self.relationship_index[end] and type in
-                    self.relationship_index[end][start]):
+                (end in self.relationship_index and start in self.relationship_index[end] and rel_type in
+                 self.relationship_index[end][start]):
             pass
         else:
-            self.index_relationship(start, end, type)
-            self.index_relationship(end, start, type)
-            self.relationships.append([start, end, dataset, weight, type])
+            self.index_relationship(start, end, rel_type)
+            self.index_relationship(end, start, rel_type)
+            self.relationships.append([start, end, dataset, weight, rel_type])
 
     def write_results(self):
         log.info("Writing synsets")
-        with open('%s/synsets.csv' % self.dataset_folder, 'w') as f:
+        with open('%s/synsets.csv' % self.dataset_folder, 'w', encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(['id:ID', 'pos:string', 'definition:string', ':LABEL'])
             for synset in self.synsets:
                 writer.writerow([synset.get_id, synset.get_pos, synset.get_definition, synset.get_label])
 
         log.info('Writing Relationships')
-        with open('%s/relationships.csv' % self.dataset_folder, 'w') as f:
+        with open('%s/relationships.csv' % self.dataset_folder, 'w', encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow([':START_ID', ':END_ID', 'dataset:string', 'weight:double', ':TYPE'])
             for relationship in self.relationships:
                 writer.writerow(relationship)
 
         log.info('Writing Words')
-        with open('%s/words.csv' % self.dataset_folder, 'w') as f:
+        with open('%s/words.csv' % self.dataset_folder, 'w', encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(WordNode.get_header())
             for id in self.lemma_map:
                 writer.writerow(self.lemma_map[id].get_row())
 
 
-Exporter('neo4j_csv_imports', 'conceptnet-assertions-5.5.0.csv.gz', language_filter='en').export()
+if __name__ == '__main__':
+    nltk.download('wordnet')
+    Exporter('neo4j_csv_imports', 'conceptnet-assertions.csv.gz', language_filter='en').export()
