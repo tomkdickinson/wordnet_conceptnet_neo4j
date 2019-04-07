@@ -1,4 +1,4 @@
 *.csv.gz
 *.csv
 .idea/
-neo4j_csv_imports/
+venv/

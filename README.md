@@ -1,22 +1,14 @@
 # ConceptNet and WordNet to Neo4j
 
-This python script converts ConceptNet and WordNet into an integrated model, allow search and expansion across both of
+This script converts ConceptNet and WordNet into an integrated model, allowing search and expansion across both of
 them.
 
-## Requirements
-You will have to download ConceptNet from https://github.com/commonsense/conceptnet5/wiki/Downloads and include the
-csv.gz in the same directory as the script.
+## Docker
 
-You will also need to install nltk with:
+To make this script more accessible, you can run this code as a docker container with:
 
-```pip install nltk```
+```docker run --network=host tomkdickinson/wordnet-conceptnet-neo4j```
 
-And download the WordNet database with it.
+You will find Neo4J running on localhost:7474. 
 
-
-## Example import command
-
-./neo4j-admin import --database={NEO4J_LOCATION}/data/databases/wordnet_conceptnet.db \
---nodes={PATH_TO_DATASET_FOLDER}/synsets.csv \
---relationships={PATH_TO_DATASET_FOLDER}/relationships.csv \
---nodes={PATH_TO_DATASET_FOLDER}/words.csv
+The default username/password is neo4j/neo4j, and when running for the first time it will ask you to change your password.

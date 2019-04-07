@@ -1,0 +1,44 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Login to Docker
+          command: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - run:
+          name: Build Docker imagae
+          command: docker build -t $DOCKER_ORGANIZATION/$DOCKER_IMAGE:$CIRCLE_SHA1 .
+      - run:
+          name: Push Docker commit
+          command: docker push $DOCKER_ORGANIZATION/$DOCKER_IMAGE:$CIRCLE_SHA1
+
+  publish:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Login to Docker
+          command: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - run:
+          name: Checkout current build
+          command: docker pull $DOCKER_ORGANIZATION/$DOCKER_IMAGE:$CIRCLE_SHA1
+      - run:
+          name: Tag current build as latest
+          command: docker tag $DOCKER_ORGANIZATION/$DOCKER_IMAGE:$CIRCLE_SHA1 $DOCKER_ORGANIZATION/$DOCKER_IMAGE:latest
+      - run:
+          name: Push latest to Docker
+          command: docker push $DOCKER_ORGANIZATION/$DOCKER_IMAGE:latest
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - build
+      - publish:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
